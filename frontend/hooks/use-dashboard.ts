@@ -24,16 +24,18 @@ export interface StatusDistribution {
 
 export interface UseDashboardParams {
   sprint?: string
+  assignee?: string
 }
 
 export function useDashboard(params: UseDashboardParams = {}) {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [statusDistribution, setStatusDistribution] = useState<StatusDistribution | null>(null)
   const [sprintOptions, setSprintOptions] = useState<string[]>([])
+  const [assigneeOptions, setAssigneeOptions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const { sprint } = params
+  const { sprint, assignee } = params
 
   // Fetch sprint options
   const fetchSprintOptions = useCallback(async () => {
@@ -47,12 +49,27 @@ export function useDashboard(params: UseDashboardParams = {}) {
     }
   }, [])
 
+  // Fetch assignee options
+  const fetchAssigneeOptions = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/table/assignees`)
+      if (!response.ok) throw new Error('Failed to fetch assignee options')
+      const data = await response.json()
+      setAssigneeOptions(data.assignees || [])
+    } catch (err) {
+      console.error('Error fetching assignee options:', err)
+    }
+  }, [])
+
   // Fetch dashboard stats
   const fetchStats = useCallback(async () => {
     try {
       const queryParams = new URLSearchParams()
       if (sprint) {
         queryParams.append('sprint', sprint)
+      }
+      if (assignee) {
+        queryParams.append('assignee', assignee)
       }
 
       const queryString = queryParams.toString()
@@ -70,7 +87,7 @@ export function useDashboard(params: UseDashboardParams = {}) {
       console.error('Error fetching stats:', err)
       throw err
     }
-  }, [sprint])
+  }, [sprint, assignee])
 
   // Fetch status distribution
   const fetchStatusDistribution = useCallback(async () => {
@@ -78,6 +95,9 @@ export function useDashboard(params: UseDashboardParams = {}) {
       const queryParams = new URLSearchParams()
       if (sprint) {
         queryParams.append('sprint', sprint)
+      }
+      if (assignee) {
+        queryParams.append('assignee', assignee)
       }
 
       const queryString = queryParams.toString()
@@ -95,7 +115,7 @@ export function useDashboard(params: UseDashboardParams = {}) {
       console.error('Error fetching status distribution:', err)
       throw err
     }
-  }, [sprint])
+  }, [sprint, assignee])
 
   // Fetch all dashboard data
   const fetchDashboardData = useCallback(async () => {
@@ -117,7 +137,8 @@ export function useDashboard(params: UseDashboardParams = {}) {
   // Initial load
   useEffect(() => {
     fetchSprintOptions()
-  }, [fetchSprintOptions])
+    fetchAssigneeOptions()
+  }, [fetchSprintOptions, fetchAssigneeOptions])
 
   // Fetch data when params change
   useEffect(() => {
@@ -132,6 +153,7 @@ export function useDashboard(params: UseDashboardParams = {}) {
     stats,
     statusDistribution,
     sprintOptions,
+    assigneeOptions,
     loading,
     error,
     refetch

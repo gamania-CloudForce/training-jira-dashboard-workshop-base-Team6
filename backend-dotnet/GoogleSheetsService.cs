@@ -168,10 +168,30 @@ public class GoogleSheetsService
         return await FetchAndCacheSprintDataAsync();
     }
 
-    public async Task<DashboardStats> GetDashboardStatsAsync(string? sprintFilter = null)
+    public async Task<List<string>> GetAssigneeOptionsAsync()
+    {
+        var data = await FetchAndCacheDataAsync();
+        
+        var assignees = data
+            .Where(row => row.ContainsKey("assignee") && row["assignee"] != null)
+            .Select(row => row["assignee"]?.ToString()?.Trim())
+            .Where(assignee => !string.IsNullOrEmpty(assignee))
+            .Distinct()
+            .OrderBy(assignee => assignee)
+            .ToList();
+
+        // 加入特殊選項
+        var result = new List<string> { "All" };
+        result.AddRange(assignees);
+        
+        return result;
+    }
+
+    public async Task<DashboardStats> GetDashboardStatsAsync(string? sprintFilter = null, string? assigneeFilter = null)
     {
         var allData = await FetchAndCacheDataAsync();
         var filteredData = ApplySprintFilter(allData, sprintFilter);
+        filteredData = ApplyAssigneeFilter(filteredData, assigneeFilter);
 
         var totalIssues = filteredData.Count;
         
@@ -193,10 +213,11 @@ public class GoogleSheetsService
         );
     }
 
-    public async Task<StatusDistribution> GetStatusDistributionAsync(string? sprintFilter = null)
+    public async Task<StatusDistribution> GetStatusDistributionAsync(string? sprintFilter = null, string? assigneeFilter = null)
     {
         var allData = await FetchAndCacheDataAsync();
         var filteredData = ApplySprintFilter(allData, sprintFilter);
+        filteredData = ApplyAssigneeFilter(filteredData, assigneeFilter);
 
         var totalCount = filteredData.Count;
         var statusCounts = new Dictionary<string, int>();
@@ -350,6 +371,21 @@ public class GoogleSheetsService
             if (!row.ContainsKey("sprint")) return false;
             var sprintValue = row["sprint"]?.ToString()?.Trim();
             return sprintValue == sprintFilter;
+        }).ToList();
+    }
+
+    private static List<Dictionary<string, object?>> ApplyAssigneeFilter(List<Dictionary<string, object?>> data, string? assigneeFilter)
+    {
+        if (string.IsNullOrEmpty(assigneeFilter) || assigneeFilter == "All")
+        {
+            return data;
+        }
+
+        return data.Where(row => 
+        {
+            if (!row.ContainsKey("assignee")) return false;
+            var assigneeValue = row["assignee"]?.ToString()?.Trim();
+            return assigneeValue == assigneeFilter;
         }).ToList();
     }
 
@@ -683,7 +719,7 @@ public class GoogleSheetsService
         
         // 找到目標任務
         var task = data.FirstOrDefault(row => 
-            row.TryGetValue("Key", out var key) && key?.ToString() == taskKey);
+            row.TryGetValue("key", out var key) && key?.ToString() == taskKey);
         
         if (task == null)
         {
@@ -710,9 +746,9 @@ public class GoogleSheetsService
         
         // 找到目標任務的 Dependency 欄位
         var task = data.FirstOrDefault(row => 
-            row.TryGetValue("Key", out var key) && key?.ToString() == taskKey);
+            row.TryGetValue("key", out var key) && key?.ToString() == taskKey);
         
-        if (task != null && task.TryGetValue("Dependency", out var dependencyValue) && dependencyValue != null)
+        if (task != null && task.TryGetValue("dependency", out var dependencyValue) && dependencyValue != null)
         {
             var dependencyStr = dependencyValue.ToString()?.Trim();
             if (!string.IsNullOrEmpty(dependencyStr))
@@ -725,7 +761,7 @@ public class GoogleSheetsService
                 foreach (var depKey in dependencyKeys)
                 {
                     var depTask = data.FirstOrDefault(row => 
-                        row.TryGetValue("Key", out var key) && key?.ToString() == depKey);
+                        row.TryGetValue("key", out var key) && key?.ToString() == depKey);
                     
                     if (depTask != null)
                     {
@@ -745,7 +781,7 @@ public class GoogleSheetsService
         // 找到所有依賴於此任務的其他任務
         foreach (var row in data)
         {
-            if (row.TryGetValue("Dependency", out var dependencyValue) && dependencyValue != null)
+            if (row.TryGetValue("dependency", out var dependencyValue) && dependencyValue != null)
             {
                 var dependencyStr = dependencyValue.ToString()?.Trim();
                 if (!string.IsNullOrEmpty(dependencyStr))
@@ -768,15 +804,15 @@ public class GoogleSheetsService
     private static TaskInfo ConvertToTaskInfo(Dictionary<string, object?> row)
     {
         return new TaskInfo(
-            Key: row.TryGetValue("Key", out var key) ? key?.ToString() ?? "" : "",
-            Summary: row.TryGetValue("Summary", out var summary) ? summary?.ToString() ?? "" : "",
-            Status: row.TryGetValue("Status", out var status) ? status?.ToString() ?? "" : "",
-            Assignee: row.TryGetValue("Assignee", out var assignee) ? assignee?.ToString() : null,
+            Key: row.TryGetValue("key", out var key) ? key?.ToString() ?? "" : "",
+            Summary: row.TryGetValue("summary", out var summary) ? summary?.ToString() ?? "" : "",
+            Status: row.TryGetValue("status", out var status) ? status?.ToString() ?? "" : "",
+            Assignee: row.TryGetValue("assignee", out var assignee) ? assignee?.ToString() : null,
             Parent: row.TryGetValue("parent", out var parent) ? parent?.ToString() : null,
-            IssueType: row.TryGetValue("Issue Type", out var issueType) ? issueType?.ToString() : null,
-            StoryPoints: row.TryGetValue("Story Points", out var storyPoints) ? 
+            IssueType: row.TryGetValue("issue_type", out var issueType) ? issueType?.ToString() : null,
+            StoryPoints: row.TryGetValue("story_points", out var storyPoints) ? 
                 (double.TryParse(storyPoints?.ToString(), out var sp) ? sp : null) : null,
-            Priority: row.TryGetValue("Priority", out var priority) ? priority?.ToString() : null
+            Priority: row.TryGetValue("priority", out var priority) ? priority?.ToString() : null
         );
     }
 }

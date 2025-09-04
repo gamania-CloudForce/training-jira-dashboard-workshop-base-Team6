@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
+
 // 型別定義
 export interface TaskInfo {
   key: string
@@ -42,7 +44,7 @@ export const useTaskDependency = ({ taskKey }: UseTaskDependencyOptions): UseTas
     setError(null)
     
     try {
-      const response = await fetch(`/api/task/${encodeURIComponent(key)}/dependencies`)
+      const response = await fetch(`${API_BASE_URL}/api/task/${encodeURIComponent(key)}/dependencies`)
       
       if (!response.ok) {
         if (response.status === 404) {

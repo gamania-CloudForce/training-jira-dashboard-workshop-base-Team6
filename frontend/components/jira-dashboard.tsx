@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import {
   ChevronDown,
   CheckCircle2,
@@ -8,6 +8,10 @@ import {
   FileText,
   Target,
   Loader2,
+  User,
+  Users,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { Button } from "@/components/ui/button"
@@ -27,19 +31,38 @@ import { SprintBurndownContainer } from "@/components/sprint-burndown-container"
 
 export default function JiraDashboard() {
   const [selectedSprint, setSelectedSprint] = useState<string>('All')
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('All')
 
   const {
     stats,
     statusDistribution,
     sprintOptions,
+    assigneeOptions,
     loading,
     error,
     refetch
   } = useDashboard({
     sprint: selectedSprint === 'All' ? undefined : selectedSprint,
+    assignee: selectedAssignee === 'All' ? undefined : selectedAssignee,
   })
 
-  // 定義 Status 的正確順序
+  // 模擬當前用戶 - 在實際應用中，這會來自身份驗證系統
+  const currentUser = useMemo(() => {
+    // 從 assigneeOptions 中找到第一個非 'All' 的選項作為模擬的當前用戶
+    return assigneeOptions.find(assignee => assignee !== 'All') || null
+  }, [assigneeOptions])
+
+  const handleMyTasksToggle = () => {
+    if (selectedAssignee === currentUser) {
+      setSelectedAssignee('All')
+    } else if (currentUser) {
+      setSelectedAssignee(currentUser)
+    }
+  }
+
+  // 檢查是否沒有資料
+  const hasNoData = !loading && stats?.total_issues === 0
+  const isPersonalView = selectedAssignee !== 'All'
   const statusOrder = [
     'Backlog',
     'Evaluated', 
@@ -99,6 +122,47 @@ export default function JiraDashboard() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Assignee:</label>
+            <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select Assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                {assigneeOptions.map((assignee) => (
+                  <SelectItem key={assignee} value={assignee}>
+                    {assignee === 'All' ? 'All Members' : assignee}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {currentUser && (
+            <Button
+              variant={selectedAssignee === currentUser ? "default" : "outline"}
+              size="sm"
+              onClick={handleMyTasksToggle}
+              className="flex items-center gap-2"
+            >
+              {selectedAssignee === currentUser ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+              {selectedAssignee === currentUser ? 'My Tasks' : 'Show My Tasks'}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {stats?.last_updated && (
+            <div className="text-xs text-gray-500">
+              Last updated: {new Date(stats.last_updated).toLocaleTimeString()}
+            </div>
+          )}
           {/* <Avatar className="h-8 w-8">
             <AvatarFallback>JD</AvatarFallback>
           </Avatar> */}
@@ -110,10 +174,47 @@ export default function JiraDashboard() {
           <Card className="border-red-200 bg-red-50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <p className="text-red-600">Error: {error}</p>
-                <Button onClick={refetch} variant="outline" size="sm">
-                  Retry
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                  <div>
+                    <p className="text-red-600 font-medium">資料載入失敗，請稍後再試</p>
+                    <p className="text-red-500 text-sm mt-1">{error}</p>
+                  </div>
+                </div>
+                <Button onClick={refetch} variant="outline" size="sm" className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  重試
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasNoData && !error && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <User className="mx-auto h-12 w-12 text-yellow-400 mb-4" />
+                <h3 className="text-lg font-medium text-yellow-800 mb-2">
+                  {isPersonalView ? `您目前沒有已分配的任務` : '沒有找到任務'}
+                </h3>
+                <p className="text-yellow-600 text-sm mb-4">
+                  {isPersonalView 
+                    ? `在當前 Sprint（${selectedSprint}）中沒有分配給您的任務。` 
+                    : '在選定的條件下沒有找到任何任務資料。'
+                  }
+                </p>
+                {isPersonalView && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedAssignee('All')}
+                    className="flex items-center gap-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    查看所有團隊任務
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -123,7 +224,9 @@ export default function JiraDashboard() {
           {/* Total Issue Count */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Issue Count</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {isPersonalView ? '我的任務總數' : 'Total Issue Count'}
+              </CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -135,14 +238,18 @@ export default function JiraDashboard() {
               ) : (
                 <div className="text-2xl font-bold">{stats?.total_issues || 0}</div>
               )}
-              <p className="text-xs text-muted-foreground">Total issues tracked</p>
+              <p className="text-xs text-muted-foreground">
+                {isPersonalView ? `${selectedAssignee} 的任務` : 'Total issues tracked'}
+              </p>
             </CardContent>
           </Card>
 
           {/* Total Story Points */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Story Points</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {isPersonalView ? '我的故事點總數' : 'Total Story Points'}
+              </CardTitle>
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -154,14 +261,18 @@ export default function JiraDashboard() {
               ) : (
                 <div className="text-2xl font-bold">{stats?.total_story_points?.toFixed(1) || '0.0'}</div>
               )}
-              <p className="text-xs text-muted-foreground">Total story points</p>
+              <p className="text-xs text-muted-foreground">
+                {isPersonalView ? `${selectedAssignee} 的故事點` : 'Total story points'}
+              </p>
             </CardContent>
           </Card>
 
           {/* Total Done Item Count */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Done Item Count</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {isPersonalView ? '我的已完成任務' : 'Total Done Item Count'}
+              </CardTitle>
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -173,14 +284,18 @@ export default function JiraDashboard() {
               ) : (
                 <div className="text-2xl font-bold">{stats?.done_issues || 0}</div>
               )}
-              <p className="text-xs text-muted-foreground">Completed issues</p>
+              <p className="text-xs text-muted-foreground">
+                {isPersonalView ? '已完成的任務' : 'Completed issues'}
+              </p>
             </CardContent>
           </Card>
 
           {/* Total Done Item Story Points */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Done Story Points</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {isPersonalView ? '已完成故事點' : 'Done Story Points'}
+              </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -192,7 +307,9 @@ export default function JiraDashboard() {
               ) : (
                 <div className="text-2xl font-bold">{stats?.done_story_points?.toFixed(1) || '0.0'}</div>
               )}
-              <p className="text-xs text-muted-foreground">Completed story points</p>
+              <p className="text-xs text-muted-foreground">
+                {isPersonalView ? '已完成的故事點' : 'Completed story points'}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -200,9 +317,14 @@ export default function JiraDashboard() {
         <div className="grid gap-4 md:gap-8 lg:grid-cols-1 xl:grid-cols-1">
           <Card>
             <CardHeader>
-              <CardTitle>Issue Status Distribution</CardTitle>
+              <CardTitle>
+                {isPersonalView ? `${selectedAssignee} 的任務狀態分布` : 'Issue Status Distribution'}
+              </CardTitle>
               <CardDescription>
-                A breakdown of issues by their current status.
+                {isPersonalView 
+                  ? `${selectedAssignee} 個人任務在各狀態的分布情況` 
+                  : 'A breakdown of issues by their current status.'
+                }
                 {statusDistribution && (
                   <span className="ml-2 text-sm">
                     (Total: {statusDistribution.total_count} issues)
