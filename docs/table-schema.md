@@ -1,10 +1,19 @@
 # rawData 資料表架構文件
 
-本文件詳細說明 Google Sheets 中 rawData 資料表的欄位定義，以支援嚴格限制下的產品開發流程。
+本文件詳細說明| 17 | **Story Points** | number | 敏捷開發故事點數 | `1`, `3`, `5`, `8` |
+| 18 | **Status Category** | string | 狀態大分類 | `To Do`, `In Progress`, `Done` |
+| 19 | **Status Category Changed** | date | 狀態分類最後變更時間 | `2024-08-17 14:30:00` |
+| 20 | **Time Spent** | number | 總計花費時間（秒為單位） | `3600`, `7200` |
+| 21 | **Created** | date | Issue 建立時間 | `2024-07-19 13:20:52` |
+| 22 | **Updated** | date | 最後更新時間 | `2024-08-17 16:45:12` |
+| 23 | **Resolved** | date | 解決/完成時間 | `2024-08-20 09:15:30` |
+| 24 | **Project.name** | string | Jira 專案完整識別名稱 | `training-jira-dashboard` |
+| 25 | **Dependency** | string | 任務依賴關係，記錄此任務所依賴的其他任務 Key | `PS-25,IHAIC-3`, `PS-27`, 空值表示無依賴 |
+| 26 | **Refine Sprint 公式** | string | Sprint 精煉相關的計算公式或標記 | 公式內容或標記值 |Sheets 中 rawData 資料表的欄位定義，以支援嚴格限制下的產品開發流程。
 
 ## rawData 資料表完整架構
 
-此架構按照 Google Sheets 的實際欄位順序定義，共包含 23 個欄位。所有 vibe coding 開發都必須基於此嚴格的資料結構限制。
+此架構按照 Google Sheets 的實際欄位順序定義，共包含 26 個欄位。所有 vibe coding 開發都必須基於此嚴格的資料結構限制。
 
 ### 完整欄位列表（按順序排列）
 
@@ -22,10 +31,11 @@
 | 10 | **Urgency** | string | 緊急程度分類 | `ASAP`, `In 1 week`, `In 2 weeks`, `In 1 Month`, `In 1 Q` |
 | 11 | **T-Size** | string | T-Shirt Size 估算法 | `XS`, `S`, `M`, `L`, `XL`, `2XL`, `Unknown` |
 | 12 | **Confidence** | string | 估算信心程度 | `Highest`, `High`, `Medium`, `Low`, `Lowest` |
-| 13 | **Clients** | string | 相關客戶或客戶群組 | `客戶A`, `內部團隊` |
-| 14 | **TaskTags** | string | 任務標籤（用於分類和搜尋） | `frontend`, `backend`, `urgent` |
-| 15 | **BusinessPoints** | number | 商業價值點數 | `8`, `13`, `21` |
-| 16 | **Story Points** | number | 敏捷開發故事點數 | `1`, `3`, `5`, `8` |
+| 13 | **Assignee** | string | 任務負責人或指派對象 | `張小明`, `李大華`, 空值表示未指派 |
+| 14 | **Clients** | string | 相關客戶或客戶群組 | `客戶A`, `內部團隊` |
+| 15 | **TaskTags** | string | 任務標籤（用於分類和搜尋） | `frontend`, `backend`, `urgent` |
+| 16 | **BusinessPoints** | number | 商業價值點數 | `8`, `13`, `21` |
+| 17 | **Story Points** | number | 敏捷開發故事點數 | `1`, `3`, `5`, `8` |
 | 17 | **Status Category** | string | 狀態大分類 | `To Do`, `In Progress`, `Done` |
 | 18 | **Status Category Changed** | date | 狀態分類最後變更時間 | `2024-08-17 14:30:00` |
 | 19 | **Time Spent** | number | 總計花費時間（秒為單位） | `3600`, `7200` |
@@ -86,7 +96,7 @@
 ### API 資料存取限制
 
 #### Google Sheets 限制
-- **讀取範圍**: 嚴格限制為 `A:W` 欄位（對應 1-23 欄位）
+- **讀取範圍**: 嚴格限制為 `A:Y` 欄位（對應 1-26 欄位）
 - **快取機制**: 5 分鐘快取，資料可能延遲最多 5 分鐘
 - **並發限制**: 避免頻繁請求，遵循 API 配額限制
 - **權限要求**: 僅需讀取權限，不需要寫入權限

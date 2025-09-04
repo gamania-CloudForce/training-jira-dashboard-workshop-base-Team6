@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Loader2, Settings, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
+import { TaskDependencyViewer } from './task-dependency-viewer'
 
 export function GoogleSheetsTable() {
   const [page, setPage] = useState(1)
@@ -27,6 +28,7 @@ export function GoogleSheetsTable() {
   const [configLoading, setConfigLoading] = useState(false)
   const [configMessage, setConfigMessage] = useState('')
   const [currentSheetInfo, setCurrentSheetInfo] = useState<{sheet_id: string; sheet_url: string} | null>(null)
+  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null)
 
   const {
     data,
@@ -384,6 +386,21 @@ export function GoogleSheetsTable() {
                     {allColumns.map((column) => {
                       const value = row[column.key]
                       
+                      // 特殊處理 Key 欄位 - 添加點擊查看依賴關係
+                      if (column.key === 'key' || column.label === 'Key') {
+                        return (
+                          <td key={column.key} className="px-4 py-3 text-sm">
+                            <button
+                              onClick={() => setSelectedTaskKey(value)}
+                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer"
+                              title="Click to view task dependencies"
+                            >
+                              {value || '-'}
+                            </button>
+                          </td>
+                        )
+                      }
+
                       // 特殊處理 Status 欄位
                       if (column.key === 'status' || column.label === 'Status') {
                         return (
@@ -485,6 +502,21 @@ export function GoogleSheetsTable() {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Task Dependency Viewer Modal */}
+      {selectedTaskKey && (
+        <Dialog open={!!selectedTaskKey} onOpenChange={() => setSelectedTaskKey(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Task Dependencies - {selectedTaskKey}</DialogTitle>
+              <DialogDescription>
+                View dependencies and relationships for this task
+              </DialogDescription>
+            </DialogHeader>
+            <TaskDependencyViewer taskKey={selectedTaskKey} />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

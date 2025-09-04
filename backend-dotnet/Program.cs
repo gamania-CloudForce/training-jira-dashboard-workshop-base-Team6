@@ -30,6 +30,7 @@ var app = builder.Build();
 app.UseCors();
 
 // Configure the HTTP request pipeline.
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 app.MapGet("/api/table/summary", async (GoogleSheetsService sheetsService) => 
 {
@@ -162,6 +163,24 @@ app.MapGet("/api/sprint/list", async (GoogleSheetsService sheetsService) =>
     catch (Exception ex)
     {
         return Results.Problem($"Failed to get sprint list: {ex.Message}");
+    }
+});
+
+// Task Dependency API endpoints
+app.MapGet("/api/task/{taskKey}/dependencies", async (string taskKey, GoogleSheetsService sheetsService) =>
+{
+    try
+    {
+        var dependencies = await sheetsService.GetTaskDependenciesAsync(taskKey);
+        return Results.Ok(dependencies);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.NotFound(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to get task dependencies: {ex.Message}");
     }
 });
 

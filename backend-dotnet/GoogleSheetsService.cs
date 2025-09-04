@@ -34,7 +34,7 @@ public class GoogleSheetsService
         _sheetSprintInfo = configuration["GoogleSheets:Sheet_sprintInfo"] ?? throw new InvalidOperationException("Sheet_sprintInfo not configured");
     }
 
-    private string GetCsvUrl() => $"https://docs.google.com/spreadsheets/d/{_sheetId}/gviz/tq?tqx=out:csv&sheet={_sheetRawData}&range=A:W";
+    private string GetCsvUrl() => $"https://docs.google.com/spreadsheets/d/{_sheetId}/gviz/tq?tqx=out:csv&sheet={_sheetRawData}&range=A:Y";
     
     private string GetSprintCsvUrl() => $"https://docs.google.com/spreadsheets/d/{_sheetId}/gviz/tq?tqx=out:csv&sheet={_sheetSprintInfo}&range=C:C";
 
@@ -674,5 +674,109 @@ public class GoogleSheetsService
         }
 
         return null;
+    }
+
+    // Task Dependency Methods
+    public async Task<TaskDependencyResponse> GetTaskDependenciesAsync(string taskKey)
+    {
+        var data = await FetchAndCacheDataAsync();
+        
+        // 找到目標任務
+        var task = data.FirstOrDefault(row => 
+            row.TryGetValue("Key", out var key) && key?.ToString() == taskKey);
+        
+        if (task == null)
+        {
+            throw new ArgumentException($"Task with key '{taskKey}' not found");
+        }
+        
+        var taskInfo = ConvertToTaskInfo(task);
+        
+        // 解析依賴關係
+        var dependencies = GetTaskDependencies(data, taskKey);
+        var dependents = GetTaskDependents(data, taskKey);
+        
+        return new TaskDependencyResponse(
+            Task: taskInfo,
+            Dependencies: dependencies,
+            Dependents: dependents,
+            HasDependencies: dependencies.Count > 0 || dependents.Count > 0
+        );
+    }
+    
+    private static List<TaskInfo> GetTaskDependencies(List<Dictionary<string, object?>> data, string taskKey)
+    {
+        var dependencies = new List<TaskInfo>();
+        
+        // 找到目標任務的 Dependency 欄位
+        var task = data.FirstOrDefault(row => 
+            row.TryGetValue("Key", out var key) && key?.ToString() == taskKey);
+        
+        if (task != null && task.TryGetValue("Dependency", out var dependencyValue) && dependencyValue != null)
+        {
+            var dependencyStr = dependencyValue.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(dependencyStr))
+            {
+                // 解析依賴的任務 Key（可能是逗號分隔）
+                var dependencyKeys = dependencyStr.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(k => k.Trim())
+                    .Where(k => !string.IsNullOrEmpty(k));
+                
+                foreach (var depKey in dependencyKeys)
+                {
+                    var depTask = data.FirstOrDefault(row => 
+                        row.TryGetValue("Key", out var key) && key?.ToString() == depKey);
+                    
+                    if (depTask != null)
+                    {
+                        dependencies.Add(ConvertToTaskInfo(depTask));
+                    }
+                }
+            }
+        }
+        
+        return dependencies;
+    }
+    
+    private static List<TaskInfo> GetTaskDependents(List<Dictionary<string, object?>> data, string taskKey)
+    {
+        var dependents = new List<TaskInfo>();
+        
+        // 找到所有依賴於此任務的其他任務
+        foreach (var row in data)
+        {
+            if (row.TryGetValue("Dependency", out var dependencyValue) && dependencyValue != null)
+            {
+                var dependencyStr = dependencyValue.ToString()?.Trim();
+                if (!string.IsNullOrEmpty(dependencyStr))
+                {
+                    var dependencyKeys = dependencyStr.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(k => k.Trim())
+                        .Where(k => !string.IsNullOrEmpty(k));
+                    
+                    if (dependencyKeys.Contains(taskKey))
+                    {
+                        dependents.Add(ConvertToTaskInfo(row));
+                    }
+                }
+            }
+        }
+        
+        return dependents;
+    }
+    
+    private static TaskInfo ConvertToTaskInfo(Dictionary<string, object?> row)
+    {
+        return new TaskInfo(
+            Key: row.TryGetValue("Key", out var key) ? key?.ToString() ?? "" : "",
+            Summary: row.TryGetValue("Summary", out var summary) ? summary?.ToString() ?? "" : "",
+            Status: row.TryGetValue("Status", out var status) ? status?.ToString() ?? "" : "",
+            Assignee: row.TryGetValue("Assignee", out var assignee) ? assignee?.ToString() : null,
+            Parent: row.TryGetValue("parent", out var parent) ? parent?.ToString() : null,
+            IssueType: row.TryGetValue("Issue Type", out var issueType) ? issueType?.ToString() : null,
+            StoryPoints: row.TryGetValue("Story Points", out var storyPoints) ? 
+                (double.TryParse(storyPoints?.ToString(), out var sp) ? sp : null) : null,
+            Priority: row.TryGetValue("Priority", out var priority) ? priority?.ToString() : null
+        );
     }
 }

@@ -105,3 +105,22 @@ public record SprintInfo(
     [property: JsonPropertyName("complete_date")] DateTime? CompleteDate,
     [property: JsonPropertyName("goal")] string Goal
 );
+
+// Task Dependency Models
+public record TaskInfo(
+    [property: JsonPropertyName("key")] string Key,
+    [property: JsonPropertyName("summary")] string Summary,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("assignee")] string? Assignee,
+    [property: JsonPropertyName("parent")] string? Parent,
+    [property: JsonPropertyName("issue_type")] string? IssueType,
+    [property: JsonPropertyName("story_points")] double? StoryPoints,
+    [property: JsonPropertyName("priority")] string? Priority
+);
+
+public record TaskDependencyResponse(
+    [property: JsonPropertyName("task")] TaskInfo Task,
+    [property: JsonPropertyName("dependencies")] List<TaskInfo> Dependencies,
+    [property: JsonPropertyName("dependents")] List<TaskInfo> Dependents,
+    [property: JsonPropertyName("has_dependencies")] bool HasDependencies
+);
