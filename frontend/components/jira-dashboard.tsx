@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { ChartContainer } from "@/components/ui/chart"
 import { useDashboard } from "@/hooks/use-dashboard"
-// import { SprintBurndownContainer } from "@/components/sprint-burndown-container"
+import { SprintBurndownContainer } from "@/components/sprint-burndown-container"
 
 export default function JiraDashboard() {
   const [selectedSprint, setSelectedSprint] = useState<string>('All')
@@ -278,10 +278,10 @@ export default function JiraDashboard() {
           </Card>
         </div>
 
-        {/* Sprint Burndown Section - 暫時隱藏 */}
-        {/* <div className="grid gap-4 md:gap-8 lg:grid-cols-1 xl:grid-cols-1">
+        {/* Sprint Burndown Section */}
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-1 xl:grid-cols-1">
           <SprintBurndownContainer selectedSprint={selectedSprint} />
-        </div> */}
+        </div>
 
       </main>
     </div>
